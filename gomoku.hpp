@@ -4,8 +4,18 @@
 #include <vector>
 #include <iostream>
 #include <stdexcept> 
+#include <SFML/Graphics.hpp>
+#include <string>
+
 
 const int BOARD_SIZE = 19;
+const int CELL_SIZE    = 40;
+const int MARGIN       = 40;
+const int BOARD_PIXELS = (BOARD_SIZE - 1) * CELL_SIZE;
+const int WINDOW_WIDTH = BOARD_PIXELS + 2 * MARGIN;
+const int WINDOW_HEIGHT= WINDOW_WIDTH + 100;
+const int STONE_RADIUS = CELL_SIZE / 2 - 3;
+
 enum Cell { EMPTY, BLACK, WHITE };
 
 struct Point {

@@ -1,65 +1,143 @@
 #include "gomoku.hpp"
 
+
 int main() {
     Gomoku game;
-    Cell currentTurn = BLACK; // Move outside the loop
-    MoveResult mv;
+    Cell currentTurn = BLACK;
+    bool gameOver    = false;
+    std::string statusMsg = "Black's turn";
 
-    while(true) {
-        game.printBoard();
-        
-        if(currentTurn == WHITE)
-            std::cout << "White's turn (O).\n";
-        else
-            std::cout << "Black's turn (X).\n";
-       
-        int row, col;
-        std::cout << "Enter row: ";
-        if (!(std::cin >> row)) break; // Exit if input is invalid (e.g. user typed a letter)
-        
-        std::cout << "Enter col: ";
-        if (!(std::cin >> col)) break;
+    sf::RenderWindow window(sf::VideoMode(WINDOW_WIDTH, WINDOW_HEIGHT), "Gomoku");
+    window.setFramerateLimit(60);
 
-        try {
-            // Try to apply the move. If it's invalid, it jumps straight to 'catch'
-            mv = game.applyMove(row, col, currentTurn);
-            
-            // --- THE REFEREE: Check if the game is over ---
-            
-            // 1. Check for 10 captures
-            if (game.hasTenCaptures(currentTurn)) {
-                game.printBoard();
-                std::cout << "\n🎉 WINNER! " << (currentTurn == BLACK ? "Black" : "White") 
-                          << " wins by capturing 10 stones!\n";
-                break; // Ends the game loop
-            }
+    sf::Font font;
+    // Load any TTF you have, or grab one from /usr/share/fonts on Linux
+    bool fontLoaded = font.loadFromFile("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf");
 
-            // 2. Check for 5-in-a-row
-            if (game.hasFiveAt(row, col, currentTurn)) {
-                if (game.isFiveBreakable(currentTurn)) {
-                    std::cout << "\n⚠️ " << (currentTurn == BLACK ? "Black" : "White") 
-                          << " has 5-in-a-row, but it can be broken! Game continues...\n";
-                } else {
-                        game.printBoard();
-                        std::cout << "\n🎉 WINNER! " << (currentTurn == BLACK ? "Black" : "White") 
-                                  << " wins with an unbreakable 5-in-a-row!\n";
-                        break; 
+    sf::Color boardColor(220, 179, 92);
+
+    // ── Star-point dots (hoshi) positions for a 19x19 board ─────────────────
+    const int hoshi[] = {3, 9, 15};
+
+    while (window.isOpen()) {
+
+        // ── Event Loop ───────────────────────────────────────────────────────
+        sf::Event event;
+        while (window.pollEvent(event)) {
+
+            if (event.type == sf::Event::Closed)
+                window.close();
+
+            if (event.type == sf::Event::MouseButtonPressed && !gameOver) {
+                if (event.mouseButton.button == sf::Mouse::Left) {
+
+                    int col = (event.mouseButton.x - MARGIN + CELL_SIZE / 2) / CELL_SIZE;
+                    int row = (event.mouseButton.y - MARGIN + CELL_SIZE / 2) / CELL_SIZE;
+
+                    try {
+                        game.applyMove(row, col, currentTurn);
+
+                        if (game.hasTenCaptures(currentTurn)) {
+                            statusMsg = (currentTurn == BLACK ? "Black" : "White");
+                            statusMsg += " wins by 10 captures!";
+                            gameOver = true;
+                        } else if (game.hasFiveAt(row, col, currentTurn)) {
+                            if (!game.isFiveBreakable(currentTurn)) {
+                                statusMsg = (currentTurn == BLACK ? "Black" : "White");
+                                statusMsg += " wins with 5-in-a-row!";
+                                gameOver = true;
+                            } else {
+                                statusMsg = "5-in-a-row formed but breakable – game continues.";
+                            }
+                        }
+
+                        if (!gameOver) {
+                            currentTurn = game.opponent(currentTurn);
+                            statusMsg   = (currentTurn == BLACK ? "Black" : "White");
+                            statusMsg  += "'s turn";
+                        }
+
+                    } catch (const std::invalid_argument& e) {
+                        statusMsg = std::string("Invalid move: ") + e.what();
                     }
+                }
             }
-
-            // If the move was successful and no one won, switch turns!
-            currentTurn = game.opponent(currentTurn);
-
         }
-        catch(const std::invalid_argument& e) {
-            // This runs if applyMove threw an error!
-            std::cout << "\n⚠️ Invalid Move: " << e.what() << "\n";
-            std::cout << "Please try a different spot.\n\n";
-            // Notice we do NOT switch the turn here. The loop will restart
-            // and ask the exact same player to go again.
+
+        // ── Render ───────────────────────────────────────────────────────────
+        window.clear(boardColor);
+
+        // 1) Grid lines
+        for (int i = 0; i < BOARD_SIZE; i++) {
+            sf::Vertex vLine[] = {
+                sf::Vertex(sf::Vector2f(MARGIN + i * CELL_SIZE, MARGIN),                    sf::Color::Black),
+                sf::Vertex(sf::Vector2f(MARGIN + i * CELL_SIZE, MARGIN + BOARD_PIXELS),     sf::Color::Black)
+            };
+            sf::Vertex hLine[] = {
+                sf::Vertex(sf::Vector2f(MARGIN,                 MARGIN + i * CELL_SIZE),    sf::Color::Black),
+                sf::Vertex(sf::Vector2f(MARGIN + BOARD_PIXELS,  MARGIN + i * CELL_SIZE),    sf::Color::Black)
+            };
+            window.draw(vLine, 2, sf::Lines);
+            window.draw(hLine, 2, sf::Lines);
         }
+
+        // 2) Star points (hoshi)
+        for (int r : hoshi) {
+            for (int c : hoshi) {
+                sf::CircleShape dot(4);
+                dot.setFillColor(sf::Color::Black);
+                dot.setOrigin(4, 4);
+                dot.setPosition(MARGIN + c * CELL_SIZE, MARGIN + r * CELL_SIZE);
+                window.draw(dot);
+            }
+        }
+
+        // 3) Stones
+        for (int r = 0; r < BOARD_SIZE; r++) {
+            for (int c = 0; c < BOARD_SIZE; c++) {
+                Cell cell = game.getCell(r, c); // assumes getCell(row,col) exists
+                if (cell == EMPTY) continue;
+
+                sf::CircleShape stone(STONE_RADIUS);
+                stone.setOrigin(STONE_RADIUS, STONE_RADIUS);
+                stone.setPosition(MARGIN + c * CELL_SIZE, MARGIN + r * CELL_SIZE);
+
+                if (cell == BLACK) {
+                    stone.setFillColor(sf::Color::Black);
+                    stone.setOutlineColor(sf::Color(50, 50, 50));
+                } else {
+                    stone.setFillColor(sf::Color::White);
+                    stone.setOutlineColor(sf::Color(180, 180, 180));
+                }
+                stone.setOutlineThickness(1.5f);
+                window.draw(stone);
+            }
+        }
+
+        // 4) Bottom info bar (captures + status)
+        if (fontLoaded) {
+            int blackCaps = game.getCaptures(BLACK); // assumes getCaptures() exists
+            int whiteCaps = game.getCaptures(WHITE);
+
+            auto makeText = [&](const std::string& str, float x, float y, unsigned size, sf::Color color) {
+                sf::Text t;
+                t.setFont(font);
+                t.setString(str);
+                t.setCharacterSize(size);
+                t.setFillColor(color);
+                t.setPosition(x, y);
+                window.draw(t);
+            };
+
+            float barY = WINDOW_WIDTH + 8;
+            makeText("Black captures: " + std::to_string(blackCaps), MARGIN,           barY,      16, sf::Color::Black);
+            makeText("White captures: " + std::to_string(whiteCaps), MARGIN + 280,     barY,      16, sf::Color::Black);
+            makeText(statusMsg,                                        MARGIN,           barY + 26, 18,
+                     gameOver ? sf::Color(180, 0, 0) : sf::Color::Black);
+        }
+
+        window.display();
     }
-    
-    std::cout << "Game Over. Thanks for playing!\n";
+
     return 0;
 }
