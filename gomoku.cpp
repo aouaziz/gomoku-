@@ -15,6 +15,9 @@ Gomoku::Gomoku() {
 Gomoku::~Gomoku() {
 }
 
+int Gomoku::getCaptures(Cell color) const {
+    return (color == BLACK) ? capturedBlack : capturedWhite;
+}
 Cell Gomoku::getCell(int row, int col) const {
         return board[row][col];
 }

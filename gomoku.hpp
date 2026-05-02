@@ -6,6 +6,7 @@
 #include <stdexcept> 
 #include <SFML/Graphics.hpp>
 #include <string>
+#include <optional>
 
 
 const int BOARD_SIZE = 19;
@@ -65,7 +66,9 @@ class Gomoku{
         
         bool isFiveBreakable(Cell winnerColor);
         bool checkIfCorrectFive(int r , int c , Cell opponentColor,Cell winnerColor);
-};
+        int getCaptures(Cell color) const;
+        
+    };
 
 
 #endif

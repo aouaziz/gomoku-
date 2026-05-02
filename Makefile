@@ -1,23 +1,35 @@
 NAME = gomoku
+TEST_NAME = run_tests
 
-SRC = main.cpp gomoku.cpp Logic.cpp
-
+# Main game files
+SRC = gomoku.cpp Logic.cpp main.cpp
 OBJ = $(SRC:.cpp=.o)
+
+# Test files (replaces main.cpp with test.cpp)
+TEST_SRC = gomoku.cpp Logic.cpp test.cpp
+TEST_OBJ = $(TEST_SRC:.cpp=.o)
+
 CXX = c++
-CPPFLAGS = -Wall -Wextra -Werror -std=c++20 -O3
+CXXFLAGS = -Wall -Wextra -Werror -std=c++20 -O3
 LDFLAGS  = -lsfml-graphics -lsfml-window -lsfml-system
 RM = rm -f
-
 
 all: $(NAME)
 
 $(NAME): $(OBJ)
-	$(CXX) $(CPPFLAGS) $(OBJ) -o $(NAME) $(LDFLAGS)
+	$(CXX) $(CXXFLAGS) $(OBJ) -o $(NAME) $(LDFLAGS)
+
+# The test target
+test: $(TEST_OBJ)
+	$(CXX) $(CXXFLAGS) $(TEST_OBJ) -o $(TEST_NAME) $(LDFLAGS)
+	./$(TEST_NAME)
 
 clean:
-	$(RM) $(OBJ)
+	$(RM) $(OBJ) test.o
 
 fclean: clean
-	$(RM) $(NAME)
+	$(RM) $(NAME) $(TEST_NAME)
 
-re: fclean $(NAME)
+re: fclean all
+
+.PHONY: all clean fclean re test
